@@ -1,39 +1,18 @@
-CROSS_COMPILE = aarch64-linux-gnu-
-CC = $(CROSS_COMPILE)gcc
-LD = $(CROSS_COMPILE)ld
-OBJCOPY = $(CROSS_COMPILE)objcopy
+all: kernel8_lab0.img
 
-CFLAGS = -Wall -O2 -ffreestanding -nostdinc -nostdlib -nostartfiles
-LDFLAGS = -T linker.ld
+a.o: a.S
+	aarch64-linux-gnu-gcc -c a.S -o a.o
 
-SOURCES_ASM = start.S
-SOURCES_C = main.c uart.c shell.c mailbox.c
+kernel8_lab0.elf: a.o linker.ld
+	aarch64-linux-gnu-ld -T linker.ld -o kernel8_lab0.elf a.o
 
-OBJECTS = $(SOURCES_ASM:.S=.o) $(SOURCES_C:.c=.o)
+kernel8_lab0.img: kernel8_lab0.elf
+	aarch64-linux-gnu-objcopy -O binary kernel8_lab0.elf kernel8_lab0.img
 
-TARGET = kernel8
-
-.PHONY: all clean run
-
-all: $(TARGET).img
-
-$(TARGET).img: $(TARGET).elf
-	$(OBJCOPY) -O binary $< $@
-
-$(TARGET).elf: $(OBJECTS)
-	$(LD) $(LDFLAGS) -o $@ $^
-
-%.o: %.S
-	$(CC) $(CFLAGS) -c $< -o $@
-
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+run: kernel8_lab0.img
+	qemu-system-aarch64 -M raspi3b -kernel kernel8_lab0.img -serial stdio -display none
 
 clean:
-	rm -f *.o $(TARGET).elf $(TARGET).img
+	rm -f a.o kernel8_lab0.elf kernel8_lab0.img
 
-run: $(TARGET).img
-	qemu-system-aarch64 -M raspi3b -kernel $(TARGET).img -serial stdio
-
-debug: $(TARGET).elf
-	qemu-system-aarch64 -M raspi3b -kernel $(TARGET).img -serial stdio -d int
+.PHONY: all run clean
